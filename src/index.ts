@@ -91,12 +91,12 @@ export function request(url: string, options: Options, callback: NodeCallback) {
       args.push(`-d ${JSON.stringify(options.payload)}`);
     }
   }
-
-  args.push(`-X ${method}`);
-  args.push(url);
   if (options.rawOptions) {
     args.push(...options.rawOptions);
   }
+  args.push(`-X ${method}`);
+  args.push(url);
+
   spawn(
     cmd,
     args,
