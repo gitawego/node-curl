@@ -85,7 +85,7 @@ export function request(url: string, options: Options, callback: NodeCallback) {
     cmd,
     args,
     {
-      // cwd: options.cwd || cwd,
+      cwd: options.cwd || cwd
     },
     curl => {
       let totalLen = 0;
