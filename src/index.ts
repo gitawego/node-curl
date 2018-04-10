@@ -1,39 +1,8 @@
-import * as fs from 'fs';
-import * as util from 'util';
-import { cloneDeep } from 'lodash';
 import { errors } from './errors';
 import { spawn } from './spawn';
-import { userAgents } from './useragents';
-
-export type NodeCallback = (error: any, data: any) => void;
-
+// import { userAgents } from './useragents';
 const cwd = process.cwd();
-/**
- * Make some curl opts friendlier.
- */
-
-const curl_map = {
-  timeout: 'max-time',
-  redirects: 'max-redirs',
-  method: 'request',
-  useragent: 'user-agent'
-};
-
-/**
- * Default user-agents.
- */
-
-const user_agents_len = userAgents.length;
-
-/**
- * Default request headers.
- */
-
-const default_headers = {
-  Accept: '*/*',
-  'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
-  'Accept-Language': 'en-US,en;q=0.8'
-};
+export type NodeCallback = (error: any, data: any) => void;
 
 export interface Options {
   method?: string;
@@ -55,6 +24,18 @@ export interface Options {
   rawOptions?: string[];
 }
 
+export function curl(url: string, options: Options) {
+  return new Promise((resolve, reject) => {
+    request(url, options, (err, resp) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(resp);
+    });
+  });
+}
+
 /**
  * Make a request with cURL.
  *
@@ -73,46 +54,49 @@ export function request(url: string, options: Options, callback: NodeCallback) {
   if (!options.rejectUnauthorized) {
     args.push('-k');
   }
+  args.push(`-X`, method);
+  args.push(url);
   if (options.headers) {
     Object.keys(options.headers).forEach(key => {
-      args.push(`-H ${key}:${options.headers[key]}`);
+      args.push(`-H`, `${key}:${options.headers[key]}`);
     });
   }
   if (options.userAgent) {
-    args.push(`-A ${options.userAgent}`);
+    args.push(`-A`, options.userAgent);
   }
   if (options.user) {
     args.push(
-      `-u ${options.user}${options.password ? `:${options.password}` : ''}`
+      `-u`,
+      `${options.user}${options.password ? `:${options.password}` : ''}`
     );
   }
   if (options.payload) {
-    if (typeof options.payload === 'object') {
-      args.push(`-d ${JSON.stringify(options.payload)}`);
-    }
+    const payload =
+      typeof options.payload === 'object'
+        ? JSON.stringify(options.payload)
+        : options.payload;
+    args.push(`-d`, payload);
   }
   if (options.rawOptions) {
     args.push(...options.rawOptions);
   }
-  args.push(`-X ${method}`);
-  args.push(url);
 
   spawn(
     cmd,
     args,
     {
-      cwd: options.cwd
+      // cwd: options.cwd || cwd,
     },
     curl => {
       let totalLen = 0;
-      const chunks = [];
+      const chunks: Buffer[] = [];
       let stderr = '';
       curl.stdout.on('data', function(chunk) {
         totalLen += chunk.length;
-        chunks.push(chunk);
+        chunks.push(chunk as Buffer);
       });
 
-      //Pipe stderr to the current process?
+      // Pipe stderr to the current process?
       if (options.stderr === true) {
         curl.stderr.pipe(process.stderr);
         delete options.stderr;
@@ -140,7 +124,16 @@ export function request(url: string, options: Options, callback: NodeCallback) {
   );
 }
 
-export function parseData(data: string) {
+export interface ParsedData {
+  headers: {
+    [key: string]: string;
+  };
+  httpVersion: string;
+  statusCode: string;
+  statusDescription: string;
+  content: any;
+}
+export function parseData(data: string): ParsedData {
   console.log(data);
   const result: any = {
     headers: {}
@@ -152,13 +145,16 @@ export function parseData(data: string) {
       case 0:
         const info = part.split(' ');
         result.httpVersion = info.shift();
-        result.statusCode = info.shift();
+        result.statusCode = Number(info.shift());
         result.statusDescription = info.join(' ');
         break;
       default:
         const parts = part.split(': ');
-        result.headers[parts[0].trim()] = parts[1].trim();
+        result.headers[parts[0].trim().toLowerCase()] = parts[1].trim();
     }
   });
+  if (result.headers['content-type'].match(/application\/json/)) {
+    result.content = JSON.parse(result.content);
+  }
   return result;
 }
