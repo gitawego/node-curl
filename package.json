@@ -5,7 +5,10 @@
   "author": "Hongbo LU <gitawego@gmail.com>",
   "license": "MIT",
   "devDependencies": {
+    "@types/jest": "^22.2.3",
     "@types/node": "^9.6.2",
+    "jest": "^22.4.3",
+    "ts-jest": "^22.4.2",
     "typescript": "^2.8.1"
   },
   "dependencies": {
@@ -14,6 +17,19 @@
   },
   "scripts": {
     "build": "tsc",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "test": "jest"
+  },
+  "jest": {
+    "globals": {
+      "ts-jest": {
+        "enableTsDiagnostics": true
+      }
+    },
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"]
   }
 }

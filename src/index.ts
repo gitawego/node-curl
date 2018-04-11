@@ -24,7 +24,13 @@ export interface Options {
   rawOptions?: string[];
 }
 
-export function curl(url: string, options: Options) {
+export interface CurlResponse {
+  data: string | ParsedData;
+  code: number;
+  stderr: string;
+}
+
+export function curl(url: string, options: Options): Promise<CurlResponse> {
   return new Promise((resolve, reject) => {
     request(url, options, (err, resp) => {
       if (err) {
@@ -45,7 +51,7 @@ export function curl(url: string, options: Options) {
  */
 
 export function request(url: string, options: Options, callback: NodeCallback) {
-  const args: string[] = ['-i'];
+  const args: string[] = ['-i', '--silent'];
   const method = (options.method || 'get').toUpperCase();
   const cmd = options.curlBinaryPath || 'curl';
   if (!('rejectUnauthorized' in options)) {
@@ -110,7 +116,6 @@ export function request(url: string, options: Options, callback: NodeCallback) {
         const data = options.encoding
           ? finalData.toString(options.encoding)
           : finalData;
-        console.log('data', data);
         callback(error, {
           data:
             options.parseData && typeof data === 'string'
@@ -134,7 +139,6 @@ export interface ParsedData {
   content: any;
 }
 export function parseData(data: string): ParsedData {
-  console.log(data);
   const result: any = {
     headers: {}
   };
